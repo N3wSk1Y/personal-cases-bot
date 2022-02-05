@@ -2,7 +2,7 @@ import { Client, Intents, MessageSelectMenu, MessageEmbed, MessageActionRow, Mes
 import { REST } from '@discordjs/rest';
 import 'ts-replace-all';
 import { Token, GuildId, CasesChannel, Ranks, Divisions } from './config.json';
-const wait = require('util').promisify(setTimeout);
+import sleep from 'atomic-sleep';
 const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
 const guild = client.guilds.fetch(GuildId);
 
@@ -30,8 +30,12 @@ const row = new MessageActionRow()
             .setStyle('PRIMARY'),
         new MessageButton()
             .setCustomId('newpatrol')
-            .setLabel('Патрульный лог')
+            .setLabel('Добавить патруль')
             .setStyle('SUCCESS'),
+        new MessageButton()
+            .setCustomId('deletepatrol')
+            .setLabel('Удалить последний патруль')
+            .setStyle('DANGER'),
     );
     
 const marks = new MessageActionRow()
@@ -153,18 +157,31 @@ client.on('interactionCreate', async interaction => {
 	if (interaction.isCommand()){
         if (interaction.commandName === 'newcase') {
             if(interaction.channelId === CasesChannel) {
+                
+                async function HasCase(): Promise<boolean> {
+                    const messages = await interaction.channel.messages.fetch({ limit: 99 }).then(messages => {
+                        return messages;
+                    })
+                    const result = messages.filter(word => word.content == `<@${interaction.user.id}>`);
+                    console.log(result)
+                    return false; 
+                }
+                
 
-                interaction.channel.messages.fetch({ limit: 150 }).then(messages => {
-                    messages.forEach(message => console.log(message.content))
-                })
-
-                if(servername.split('[').length-1 >= 1 && servername.split(']').length-1 >= 1) {
-                    if((servername.split('[').length-1 == 2 && servername.split(']').length-1 == 2) || Executive.includes(servername.slice(servername.indexOf('[')+1, servername.indexOf(']')).trim())) {
-                        interaction.reply({ content: `<@${interaction.user.id}>`, embeds: [UpdateCase(servername, interaction.user.tag, '```Патрульный лог:\n```', Executive.includes(servername.slice(servername.indexOf('[')+1, servername.indexOf(']')).trim()))], components: [row], ephemeral: false }) 
-                    } else interaction.reply({ content: "**Вы не указали отдел. Форма ника: `[Ранг] NickName [Отдел]`**", ephemeral: true })
-
+                if(await HasCase()) {
+                    (async () => {
+                        interaction.reply({ content: `**У вас уже есть личное дело!**`, ephemeral: true });
+                    })()     
                 } else {
-                    interaction.reply({ content: "**Ваш ник не по форме: `[Ранг] NickName [Отдел]`**", ephemeral: true })
+
+                    if(servername.split('[').length-1 >= 1 && servername.split(']').length-1 >= 1) {
+                        if((servername.split('[').length-1 == 2 && servername.split(']').length-1 == 2) || Executive.includes(servername.slice(servername.indexOf('[')+1, servername.indexOf(']')).trim())) {
+                            interaction.reply({ content: `<@${interaction.user.id}>`, embeds: [UpdateCase(servername, interaction.user.tag, '```Патрульный лог:\n```', Executive.includes(servername.slice(servername.indexOf('[')+1, servername.indexOf(']')).trim()))], components: [row], ephemeral: false }) 
+                        } else interaction.reply({ content: "**Вы не указали отдел. Форма ника: `[Ранг] NickName [Отдел]`**", ephemeral: true })
+
+                    } else {
+                        interaction.reply({ content: "**Ваш ник не по форме: `[Ранг] NickName [Отдел]`**", ephemeral: true })
+                    }
                 }
 
             } else interaction.reply({ content: `**Создавать личные дела можно только в канале <#${CasesChannel}>**`, ephemeral: true })
